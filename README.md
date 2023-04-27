@@ -2,13 +2,13 @@
 
 Team 1
 
-| Student Name   | Student Email          |
-|    :---:       |     :---:              |
-| Tyler Fulinara | tfulinara@sfsu.edu     |
-| Ethan Zhou | ..     |
-| Daniel Chang | ..     |
-| Chad Kite | ..     |
-| Priya Pradeep | ..     | 
+| Student Name   |
+|    :---:       |
+| Tyler Fulinara |
+| Ethan Zhou |
+| Daniel Chang |
+| Chad Kite |
+| Priya Pradeep |
 
 Team Collaboration:
 <br > Ethan <br >
