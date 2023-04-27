@@ -11,7 +11,7 @@ Team 1
 | Priya Pradeep | ..     | 
 
 Team Collaboration:
-Ethan 
+Ethan <br >
   led group discussions, maintained direction and focus during work sessions while ensuring that output met the requirements specified in the directions and created the  frameworks for the code to each solution. 
 Chad 
   conducted the majority of the initial programming on problem 1, helped troubleshoot problem 2 and worked on refining visualizations for problem 3.
