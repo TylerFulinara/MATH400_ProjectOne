@@ -10,7 +10,7 @@ Team 1
 | Chad Kite | ..     |
 | Priya Pradeep | ..     | 
 
-Team Collaboration: <br >
+Team Collaboration:
 <br > Ethan <br >
   led group discussions, maintained direction and focus during work sessions while ensuring that output met the requirements specified in the directions and created the  frameworks for the code to each solution. 
 <br > Chad <br >
