@@ -8,5 +8,4 @@ Team 1
 | Ethan Zhou | ..     | ..    |
 | Daniel Chang | ..     | ..    |
 | Chad Kite | ..     | ..    |
-| Priya Predeep | ..     | ..    |
-| Ethan Zhou | ..     | ..    |
+| Priya Pradeep | ..     | ..    |
