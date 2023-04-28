@@ -9,23 +9,23 @@ from numpy import linalg as LA
 from sympy import *
 from efficient_cancer_data import read_training_data
 
-fileNameA = "train.data"
-fileNameB = "validate.data"
+# The current paths only work if the train.data and validate.data are in the same file as this python file.
+trainingFile = "train.data"
+validateFile = "validate.data"
+
 def QR(A):
-    Q, R = np.linalg.qr(A, 'reduced')
+    Q, R = np.linalg.qr(A)
     return Q, R
 
 def leastSquares(A, b):
     # Given the fact that read_training_data() already gives us A and b
-    # It is random everytime we rerun the program if D is not set.
-    # I assume we need to calculate to only get the means to get a leastsquares model
     Q, R = QR(A)
-    Rx = QRleastSquares(Q, R, b)
+    Rx = QRleastSquares(Q, b)
     # Row reducing and separating the matrix and the uneccessary numbers
     xhat = backSub(R, Rx)
     return xhat
 
-def QRleastSquares(Q, R, b):
+def QRleastSquares(Q, b):
     # Rx = Q^Tb
     Qb = Q.transpose()*b 
     return Qb
@@ -34,8 +34,10 @@ def backSub(A, b):
     n = A.shape[0]
     A = np.array(A, float)
     x = np.zeros(n)
-    x[-1] = b[-1] / A[-1,-1]
-    for i in range(n-2, -1, -1):
+    for i in range(n-1, -1, -1):
+        # np.dot allows us to multiply
+        # b[i] is the right side of the equation, so we subtract the left values
+        # A[i,i] is the coefficient of the variable we are solving for so we divide.
         x[i] = (b[i] - np.dot(A[i,i+1:], x[i+1:])) / A[i,i]
     return x
 
@@ -61,15 +63,16 @@ def percentageWrong(model, bval):
     # messed up bval being in a row instead of a column, tranposing to make it easier to compare columns rather than row and column.
     bval = bval.transpose()
     for i in range(n):
-        if bval[i] == model[i]:
+        # Changed to != to do reduce the number of times we add to count.
+        if bval[i] != model[i]:
             count += 1
-    percentWrong = (n-count)/n
+    percentWrong = count/n
     return percentWrong
 
 def main():
-    A, b = read_training_data(fileNameA)
+    A, b = read_training_data(trainingFile)
     xhatTrain = leastSquares(A, b)
-    Avalidate, bval = read_training_data(fileNameB)
+    Avalidate, bval = read_training_data(validateFile)
     validateBM = linModel(xhatTrain, Avalidate)
     # Printing the linear model for part A
     print(xhatTrain)
