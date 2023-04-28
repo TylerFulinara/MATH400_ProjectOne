@@ -1,4 +1,4 @@
-# MATH425_ProjectOne
+# MATH425 - Group One - Final Project
 
 Team 1
 
