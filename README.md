@@ -21,3 +21,11 @@ Team Collaboration:
   was responsible for the code for problem 2 and troubleshot the code for problem 1. He also tracked group participation and ensured even distribution of labor.
 <br > Priya <br >
   was assigned to the group late in the project after the majority of the work was complete. She assisted with debugging the last few issues with problem 3 and helped refine the approach to completing and presenting the project.
+  
+ ## Steps to run Please do the following steps before completing Milestone 0.
+1. From a terminal, ensure that the path is in the same directory of the actual file.
+
+2. Start an interactive environment with the python and the file containing question 2.
+		- "python -i .\fp_2.py"
+
+3. Call the main function by entering "main()"
