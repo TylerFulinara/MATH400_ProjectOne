@@ -22,7 +22,7 @@ Team Collaboration:
 <br > Priya <br >
   was assigned to the group late in the project after the majority of the work was complete. She assisted with debugging the last few issues with problem 3 and helped refine the approach to completing and presenting the project.
   
- ## Steps to run Please do the following steps before completing Milestone 0.
+ ## Steps to run question 2
 1. From a terminal, ensure that the path is in the same directory of the actual file.
 
 2. Start an interactive environment with the python and the file containing question 2.
