@@ -31,3 +31,5 @@ Team Collaboration:
 3. Call the main function by entering "main()"
 
 Code for project can be found on GitHub at https://github.com/TylerFulinara/MATH425_ProjectOne
+
+Link to video: https://drive.google.com/file/d/1pfI1DKYKSrptdRykZhkOPq8mrWzxSuPf/view?usp=share_link
