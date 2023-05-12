@@ -8,7 +8,7 @@ Created on Tue Apr 11 12:48:15 2023
 from os import path
 import numpy as np
 
-import power_solve
+import fp_1_power_solve
 
 # import txt file
 dir = "C:/Users/Charl/Documents/College/3 - Comp LA/Work/project/"
@@ -48,18 +48,16 @@ for actor in uniq_actors:
                     edge_mat[uniq_actors.index(line_ents[i]), col_num] += 1.0
 
 # # check connections between individual actors
-# uniq_actors.index("Michael Caine")
-# uniq_actors.index("Christian Bale")
-# # higher billed actors if row (1st), and lower billed actor is column (2nd)
-# edge_mat[2349,9808]
+uniq_actors.index("Michael Caine")
+uniq_actors.index("Christian Bale")
+# # higher billed actors is row (1st), and lower billed actor is column (2nd)
+edge_mat[2349,9808]
 
 # solve
-actor_nw=power_solve.pageRank(edge_mat, uniq_actors,1,1e-8,10)
+actor_nw=fp_1_power_solve.pageRank(edge_mat, uniq_actors,.69,1e-8,10)
 
 # Use power meethod to get ordered vector of actors
 ord_actors = actor_nw.powermethod()
 
 # View segment of vector of actors
 ord_actors[1:100] 
-
-
