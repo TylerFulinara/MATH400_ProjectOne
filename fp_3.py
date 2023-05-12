@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
 """
 Created on Tue Apr 25 17:51:09 2023
 
@@ -9,9 +9,10 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-# function to create and plot confusion matrix
-def get_conf_mat(df, num):
+# function to create and plot confusion matrix, and get # correct and most confused #s
+def get_conf_mat(df, num, num_corr):
     confusion_matrix = metrics.confusion_matrix(df['Actual'], df['Predicted'])
     cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
     cm_display.plot()
@@ -19,19 +20,26 @@ def get_conf_mat(df, num):
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.show()
-    return(confusion_matrix)
+    # overall percentage correct
+    print("% correct using", num, "singular vectors: {:.2f}%".format(df['Match'].values.sum() / len(df) * 100))
+    # rank order of best estimated w/ % correct
+    num_corr = corr_pred(confusion_matrix, num_corr)
+    # print table of which #s were confused with which #s
+    conf_num(confusion_matrix)
+    return(confusion_matrix, num_corr)
 
 # function to give rank order by best predicted w/ % correct and return #
 # correctly predicted by number
-def corr_pred(conf_mat, corr_num):
+def corr_pred(conf_mat, num_corr):
     per_corr = []
     for m in range(10):
-        if len(corr_num) > 9: corr_num[m][1] += conf_mat[m,m]
-        else: corr_num.append([m, conf_mat[m,m]])
+        # check to see if num_corr has a full set of entries (0-9)
+        if len(num_corr) > 9: num_corr[m][1] += conf_mat[m,m]
+        else: num_corr.append([m, conf_mat[m,m]])
         per_corr.append([m, conf_mat[m,m] / conf_mat[m,:].sum() * 100])
     per_corr_df = pd.DataFrame(per_corr, columns = ["Actual", "Percent Correct"])
     print(per_corr_df.sort_values(by=['Percent Correct'], ascending=False).to_string(index=False))
-    return(corr_num)
+    return(num_corr)
 
 # function to give rank order by most confused #s w/ %
 def conf_num(conf_mat):
@@ -50,14 +58,16 @@ test_set = np.loadtxt(file_dir + "handwriting_test_set.txt", dtype=float, delimi
 test_set_lab = np.loadtxt(file_dir + "handwriting_test_set_labels.txt", dtype=float)
 test_set_lab[test_set_lab == 10] = 0
 
-# create list to store SVD results for each number
+# create list to store Vt from SVD results for each number
 svd_mat = []
 
-# get SVD for each number and store in svd_mat
+# get SVD for each number and store Vt in svd_mat
 for i in range(10):
     num_mat = trng_set[400*i:400*(i+1),]
     U, S, Vt = np.linalg.svd(num_mat)
-    svd_mat.append([(i+1) % 10, U, S, Vt])
+    # Store Vt because it contains represents the relationship between each
+    # column and its importance to the class -> (0-9) and S
+    svd_mat.append([(i+1) % 10, Vt, S])
 
 # create list to store test entry label, # of vectors used, best solution and 
 # sorted list of solutions for each # of singular vectors used
@@ -66,106 +76,92 @@ sol_comp = []
 # for each entry in test set, find distance between entry and 5, 10, 15 and 20 
 # singular vectors for each number -> shortest distance is most likely solution
 for j in [5, 10, 15, 20]:
-    sol_vals = []
+    sol_vals = [] # list to temporarily store results for each # of SVs
     for k in range(len(test_set)):
-        k_sol_vals = []
+        k_sol_vals = [] # list to temporarily store results for each entry in test
         for l in range(10):
-            num_svd_mat = np.dot(np.dot(svd_mat[l][1][:,:j],np.diag(svd_mat[l][2])[:j,:j]),
-                                 svd_mat[l][3][:j,:])
-            diff = np.linalg.norm(test_set[k,:] - num_svd_mat)
-            k_sol_vals.append(diff)
-        min_val = min(k_sol_vals)
-        #print(test_set_lab[k], k_sol_vals.index(min_val))
-        sol_vals.append([test_set_lab[k], k_sol_vals.index(min_val) % 10, k_sol_vals])
+            l_sol_vals = [] # list to temporarily store results for each digit (0-9)
+            for m in range(j):
+                # project test entry onto the mth vector in Vt for the digit (0-9)
+                # currently being considered. 
+                Vt_vec = svd_mat[l][1][m,:] 
+                numerator = np.dot(test_set[k], Vt_vec) 
+                denominator = np.dot(Vt_vec, Vt_vec)
+                proj = numerator / denominator * Vt_vec
+                # get distance from test entry to projection
+                z_length = np.linalg.norm(test_set[k] - proj)
+                l_sol_vals.append(z_length) # store distance from test entry to proj
+            # store the mean value of distances between the test entry and the
+            # projections for each class (0-9)
+            k_sol_vals.append(np.mean(l_sol_vals))
+        min_val = min(k_sol_vals) # get the lowest value (closest to test entry)
+        # store the test entry label and the predicted class (0-9)
+        sol_vals.append([test_set_lab[k], k_sol_vals.index(min_val) % 10])
+    # store the # of SVs and the list of actual and predicted values
     sol_comp.append([j, sol_vals])
 
+# create list to store total # correct for each number by # of SVs
+num_corr = []
 
 ##### get results for 5 singular vectors
-df5 = pd.DataFrame(sol_comp[0][1], columns = ['Actual', 'Predicted', 'Norms'])
+df5 = pd.DataFrame(sol_comp[0][1], columns = ['Actual', 'Predicted'])
 df5['Match'] = df5['Actual'] == df5['Predicted']
 
 # create confusion matrix to see results
-confusion_mat = get_conf_mat(df5, 5)
-
-# overall percentage correct
-print("% correct using 5 singular vectors: {:.2f}%".format(df5['Match'].values.sum() / len(df5) * 100))
-
-# create list to store total # correct for each number
-num_corr = []
-
-# rank order of best estimated w/ % correct
-num_corr = corr_pred(confusion_mat, num_corr)
-
-# rank order by most confused #s w/ %
-conf_num(confusion_mat)
+confusion_mat5, num_corr = get_conf_mat(df5, 5, num_corr)
 
 
 ##### get results for 10 singular vectors
-df10 = pd.DataFrame(sol_comp[1][1], columns = ['Actual', 'Predicted', 'Norms'])
+df10 = pd.DataFrame(sol_comp[1][1], columns = ['Actual', 'Predicted'])
 df10['Match'] = df10['Actual'] == df10['Predicted']
 
 # create confusion matrix to see results
-confusion_mat = get_conf_mat(df10, 10)
+confusion_mat10, num_corr = get_conf_mat(df10, 10, num_corr)
 
-# overall percentage correct
-print("% correct using 10 singular vectors: {:.2f}%".format(df10['Match'].values.sum() / len(df10) * 100))
-
-# rank order of best estimated w/ % correct
-num_corr = corr_pred(confusion_mat, num_corr)
-
-# rank order by most confused #s w/ %
-conf_num(confusion_mat)
 
 ##### get results for 15 singular vectors
-df15 = pd.DataFrame(sol_comp[2][1], columns = ['Actual', 'Predicted', 'Norms'])
+df15 = pd.DataFrame(sol_comp[2][1], columns = ['Actual', 'Predicted'])
 df15['Match'] = df15['Actual'] == df15['Predicted']
 
 # create confusion matrix to see results
-confusion_mat = get_conf_mat(df15, 15)
-
-# overall percentage correct
-print("% correct using 15 singular vectors: {:.2f}%".format(df15['Match'].values.sum() / len(df15) * 100))
-
-# rank order by best predicted w/ % correct
-num_corr = corr_pred(confusion_mat, num_corr)
-
-# rank order by most confused #s w/ %
-conf_num(confusion_mat)
+confusion_mat15, num_corr = get_conf_mat(df15, 15, num_corr)
 
 
 ##### get results for 20 singular vectors
-df20 = pd.DataFrame(sol_comp[3][1], columns = ['Actual', 'Predicted', 'Norms'])
+df20 = pd.DataFrame(sol_comp[3][1], columns = ['Actual', 'Predicted'])
 df20['Match'] = df20['Actual'] == df20['Predicted']
 
 # create confusion matrix to see results
-confusion_mat = get_conf_mat(df20, 20)
+confusion_mat20, num_corr = get_conf_mat(df20, 20, num_corr)
 
-# overall percentage correct
-print("% correct using 20 singular vectors: {:.2f}%".format(df20['Match'].values.sum() / len(df20) * 100))
-
-# rank order of best estimated w/ % correct
-num_corr = corr_pred(confusion_mat, num_corr)
-
-# rank order by most confused #s w/ %
-conf_num(confusion_mat)
-
-##### cumulative most diff digits to classify
-num_corr_df = pd.DataFrame(num_corr, columns = ['Actual', 'Number Correct'])
-print(num_corr_df.sort_values(by=['Number Correct']).to_string(index=False))
 
 ##### graphical comparison of success rates using 5, 10, 15, 20 SVDs
-import matplotlib.pyplot as plt
-import numpy as np
-
-x = np.linspace(-1, 1, 50)
-print(x)
-y = 2*x + 1
-
-plt.plot(x, y)
-plt.show()
+correctPerNum5 = []; correctPerNum10 = []; correctPerNum15 = []; correctPerNum20 = []
+for i in range(10):
+    correctPerNum5.append(confusion_mat5[i,i])
+    correctPerNum10.append(confusion_mat10[i,i])
+    correctPerNum15.append(confusion_mat15[i,i])   
+    correctPerNum20.append(confusion_mat20[i,i])
 
 
-##### Look at some of the dicult numbers. (5, 2 and 8)
+# create df of # correct for each digit by # of SVs
+df = pd.DataFrame({'5_SVs': correctPerNum5, '10_SVs': correctPerNum10,
+                   '15_SVs': correctPerNum15, '20_SVs': correctPerNum20})
+# create heatmap
+p1 = sns.heatmap(df).set(title='Correct predictions by digit and # of SVs')
+
+
+# create df of total correct by # of SVs
+df2 = pd.DataFrame({'5_SVs': [sum(correctPerNum5)/1000], '10_SVs': [sum(correctPerNum10)/1000],
+                   '15_SVs': [sum(correctPerNum15)/1000], '20_SVs': [sum(correctPerNum20)/1000]})
+# create heatmap
+p2 = sns.heatmap(df2).set(title='Total % Correct by # of SVs')
+
+
+##### Look at some of the difficult numbers. 
+# cumulative most difficult digits to classify
+num_corr_df = pd.DataFrame(num_corr, columns = ['Actual', 'Number Correct'])
+print(num_corr_df.sort_values(by=['Number Correct']).to_string(index=False))
 
 # function to map number images
 def num_img(num):
@@ -176,14 +172,11 @@ def num_img(num):
     
         # get assortment of images for requested #
         num_array = trng_set[num*400 + 20*j, :]
-        
         # reshape vectors into 20x20 matrices
         num_matrix = np.reshape(num_array, (20, 20)).T
-        
         # Display the image and set the title
         ax.imshow(num_matrix, cmap='gray')
         ax.set_title('{}'.format(int(trng_set_lab[num*400 + 20*j])))
-        
         # Remove the x and y ticks
         ax.set_xticks([])
         ax.set_yticks([])
@@ -193,95 +186,105 @@ def num_img(num):
 
 # get images (2 is 800-1199, 5 is 2000-2399, 8 is 3200-3599)
 num_img(2)
-num_img(5)
 num_img(8)
+num_img(5)
 
 
 ##### evidence that singular values are suitable basis for classifying digits
+markers = ['.',',','o','v','^','p','*','+','x', 's']
+colors = ['orange','green','black','blue','purple','brown','red','violet','teal','pink']
+
 # plot all singular values for each number
-plt.scatter(np.repeat(0, 400), svd_mat[9][2], c ="pink",
-            linewidths = 2,
-            marker ="s",
-            s = 50)
- 
-markers = ['.',',','o','v','^','p','*','+','x']
-colors = ['orange','green','black','blue','purple','maroon','red','violet','teal']
-for m in range(9):
-    plt.scatter(np.repeat(m+1, 400), svd_mat[m][2], c = colors[m],
+for m in range(10):
+    plt.scatter(np.repeat((m+1)%10, 20), svd_mat[m][2][0:20], c = colors[m],
             linewidths = 2,
             marker = markers[m],
             s = 100)
-
 plt.show()
 
-
-# plot only most signifant singular value for each number
-plt.scatter(0, svd_mat[9][2][0], c ="pink",
-            linewidths = 2,
-            marker ="s",
-            s = 50)
- 
-markers = ['.',',','o','v','^','p','*','+','x']
-colors = ['orange','green','black','blue','purple','maroon','red','violet','teal']
+# plot mean of 20 largest singular values for each number
 for m in range(9):
-    plt.scatter(m+1, svd_mat[m][2][0], c = colors[m],
+    plt.scatter((m+1)%10, np.mean(svd_mat[m][2][0:20]), c = colors[m],
             linewidths = 2,
             marker = markers[m],
             s = 100)
-
 plt.show()
 
 
-##### stage 2: compare 1st to largest SVD, if 1 residual is signifcantly smaller
+##### stage 2: compare largest SVD 1st, if 1 residual is signifcantly smaller
 # than the others, use that number, o/w use stage 1 (5 singular vectors) 
 
 sol_vals_1 = []
 sol_vals_5 = []
+
+# iterate through test set to find best predicted number
 for k in range(len(test_set)):
     k_sol_vals = []
+    # iterate through 0-9 to find distance from test number to space defined by SV
     for l in range(10):
-        num_svd_mat = np.dot(np.dot(svd_mat[l][1][:,:1],np.diag(svd_mat[l][2])[:1,:1]),
-                             svd_mat[l][3][:1,:])
-        diff = np.linalg.norm(test_set[k,:] - num_svd_mat)
-        k_sol_vals.append(diff)
-    min_val = min(k_sol_vals)
-    min_val_index = k_sol_vals.index(min_val)
-    ordered_vals = np.sort(np.array(k_sol_vals))
-    #print(test_set_lab[k], k_sol_vals.index(min_val))
-    if ordered_vals[0] < .92 * ordered_vals[1]:
+        # project test entry onto the mth vector in Vt for the digit (0-9)
+        # currently being considered. 
+        Vt_vec = svd_mat[l][1][1,:] 
+        numerator = np.dot(test_set[k], Vt_vec) 
+        denominator = np.dot(Vt_vec, Vt_vec)
+        proj = numerator / denominator * Vt_vec
+        # get distance from test entry to projection
+        z_length = np.linalg.norm(test_set[k] - proj)
+        k_sol_vals.append(z_length) # store distance from test entry to proj
+    min_val = min(k_sol_vals) # get shortest distance from test entry to proj
+    min_val_index = k_sol_vals.index(min_val) # get pos of shortest dist (class)
+    ordered_vals = np.sort(np.array(k_sol_vals)) # sort distances
+    # if the smallest distance is more than 6% less than the next smallest, keep it
+    if ordered_vals[0] < .94 * ordered_vals[1]:
         sol_vals_1.append([test_set_lab[k], k_sol_vals.index(min_val) % 10])
     else:
         k_sol_vals = []
         for l in range(10):
-            num_svd_mat = np.dot(np.dot(svd_mat[l][1][:,:5],np.diag(svd_mat[l][2])[:5,:5]),
-                                 svd_mat[l][3][:5,:])
-            diff = np.linalg.norm(test_set[k,:] - num_svd_mat)
-            k_sol_vals.append(diff)
-        min_val = min(k_sol_vals)
-        #print(test_set_lab[k], k_sol_vals.index(min_val))
+            l_sol_vals = []
+            for m in range(j):
+                # project test entry onto the mth vector in Vt for the digit (0-9)
+                # currently being considered. 
+                Vt_vec = svd_mat[l][1][m,:] 
+                numerator = np.dot(test_set[k], Vt_vec) 
+                denominator = np.dot(Vt_vec, Vt_vec)
+                proj = numerator / denominator * Vt_vec
+                # get distance from test entry to projection
+                z_length = np.linalg.norm(test_set[k] - proj)
+                l_sol_vals.append(z_length) # store distance from test entry to proj
+            # store the mean value of distances between the test entry and the
+            # projections for each class (0-9)
+            k_sol_vals.append(np.mean(l_sol_vals))
+        min_val = min(k_sol_vals) # get shortest distance
+        # store the test entry label and the predicted class (0-9)
         sol_vals_5.append([test_set_lab[k], k_sol_vals.index(min_val) % 10])
 
-
-print("Using 8% difference between the smallest and next smallest residual as" +
+# Get % correct for values predicted with 1 singular vector
+print("Using 6% difference between the smallest and next smallest residual as" +
       " the demarcation between keeping the result from using 1 singular vector" +
       " and using 5 singular vectors, the # that were classified by 1 singular" +
       " vector is: " + str(len(sol_vals_1)) + 
       " which is: {:.2f}%".format(len(sol_vals_1) / (len(test_set)) * 100))
+# Get % correct for values predicted with 5 singular vectors
 print("The # that were classified by 5 singular vectors is: " + 
       str(len(sol_vals_5)) + 
       " which is: {:.2f}%".format(len(sol_vals_5) / (len(test_set)) * 100))
 
+num_corr = []
+# Create df and confusion matrix to see results for # predicted with 1 SV
 df_st2_1 = pd.DataFrame(sol_vals_1, columns = ['Actual', 'Predicted'])
 df_st2_1['Match'] = df_st2_1['Actual'] == df_st2_1['Predicted']
-confusion_mat = get_conf_mat(df_st2_1, 1)
+confusion_mat, num_corr = get_conf_mat(df_st2_1, 1, num_corr)
 print("% correct using 1 singular vector: {:.2f}%".format(df_st2_1['Match'].values.sum() / len(df_st2_1) * 100))
 
+# Create df and confusion matrix to see results for # predicted with 5 SVs
 df_st2_5 = pd.DataFrame(sol_vals_5, columns = ['Actual', 'Predicted'])
 df_st2_5['Match'] = df_st2_5['Actual'] == df_st2_5['Predicted']
-confusion_mat = get_conf_mat(df_st2_1, 1)
-print("% correct using 5 singular vectors: {:.2f}%".format(df_st2_5['Match'].values.sum() / len(df_st2_1) * 100))
+confusion_mat, num_corr = get_conf_mat(df_st2_5, 1, num_corr)
+print("% correct using 5 singular vectors: {:.2f}%".format(df_st2_5['Match'].values.sum() / len(df_st2_5) * 100))
 
+# Get overall % correct
 total_corr = df_st2_1['Match'].values.sum() + df_st2_5['Match'].values.sum()
 print("% correct with 2 stage process: {:.2f}%".format(total_corr / (len(df_st2_1) + len(df_st2_5)) * 100))
 
-# Result (77.2%) is the same as using 5 singular vectors for all
+# Result (93.5%) is higher than using 5 singular vectors for all but slightly
+# less than using 10, 15 or 20 singular vectors
