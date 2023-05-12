@@ -32,4 +32,4 @@ Team Collaboration:
 
 Code for project can be found on GitHub at https://github.com/TylerFulinara/MATH425_ProjectOne
 
-Link to video: https://drive.google.com/file/d/1pfI1DKYKSrptdRykZhkOPq8mrWzxSuPf/view?usp=share_link
+Link to video: https://drive.google.com/file/d/1WEWTfUUd0yznt2ec-pYeWcNyqPQcsQz6/view?usp=share_link
